@@ -65,6 +65,27 @@ mise exec -- mix build
 mise exec -- ./bin/symphony ./WORKFLOW.md
 ```
 
+## Run against P2E
+
+Use `WORKFLOW.p2e.md` when Symphony should poll a P2E product instead of Linear:
+
+```bash
+cd symphony/elixir
+export P2E_ENDPOINT=http://localhost:3000
+export P2E_OAUTH_SYMPHONY_CLIENT_ID=...
+export P2E_OAUTH_SYMPHONY_CLIENT_SECRET=...
+mise trust
+mise exec -- mix setup
+mise exec -- ./bin/symphony ./WORKFLOW.p2e.md
+```
+
+`P2E_ENDPOINT` can be either the product root (`https://p2e.example.com`) or the REST root
+(`https://p2e.example.com/api/v1`). If you already have a bearer token, set `P2E_API_TOKEN`
+instead of the OAuth client credentials. The P2E workflow polls `OPEN`, `IN_PROGRESS`, and
+`IN_REVIEW` stories every five seconds, renders the thick-spec fields into the Codex prompt, writes
+agent notes through `story_log`, and changes lifecycle status through the P2E REST transition
+endpoint.
+
 ## Configuration
 
 Pass a custom workflow file path to `./bin/symphony` when starting the service:

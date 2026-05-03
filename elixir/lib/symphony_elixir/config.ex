@@ -115,23 +115,48 @@ defmodule SymphonyElixir.Config do
   end
 
   defp validate_semantics(settings) do
-    cond do
-      is_nil(settings.tracker.kind) ->
-        {:error, :missing_tracker_kind}
-
-      settings.tracker.kind not in ["linear", "memory"] ->
-        {:error, {:unsupported_tracker_kind, settings.tracker.kind}}
-
-      settings.tracker.kind == "linear" and not is_binary(settings.tracker.api_key) ->
-        {:error, :missing_linear_api_token}
-
-      settings.tracker.kind == "linear" and not is_binary(settings.tracker.project_slug) ->
-        {:error, :missing_linear_project_slug}
-
-      true ->
-        :ok
+    case validate_tracker_kind(settings.tracker) do
+      :ok -> validate_tracker_settings(settings.tracker)
+      {:error, reason} -> {:error, reason}
     end
   end
+
+  defp validate_tracker_settings(tracker) do
+    case validate_linear_tracker(tracker) do
+      :ok -> validate_p2e_tracker(tracker)
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp validate_tracker_kind(%{kind: nil}), do: {:error, :missing_tracker_kind}
+
+  defp validate_tracker_kind(%{kind: kind}) when kind in ["linear", "memory", "p2e"], do: :ok
+
+  defp validate_tracker_kind(%{kind: kind}), do: {:error, {:unsupported_tracker_kind, kind}}
+
+  defp validate_linear_tracker(%{kind: "linear", api_key: api_key}) when not is_binary(api_key),
+    do: {:error, :missing_linear_api_token}
+
+  defp validate_linear_tracker(%{kind: "linear", project_slug: project_slug})
+       when not is_binary(project_slug),
+       do: {:error, :missing_linear_project_slug}
+
+  defp validate_linear_tracker(_tracker), do: :ok
+
+  defp validate_p2e_tracker(%{kind: "p2e", project_slug: project_slug})
+       when not is_binary(project_slug),
+       do: {:error, :missing_p2e_project_slug}
+
+  defp validate_p2e_tracker(%{kind: "p2e"} = tracker) do
+    if is_binary(tracker.api_key) or
+         (is_binary(tracker.client_id) and is_binary(tracker.client_secret)) do
+      :ok
+    else
+      {:error, :missing_p2e_auth}
+    end
+  end
+
+  defp validate_p2e_tracker(_tracker), do: :ok
 
   defp format_config_error(reason) do
     case reason do
