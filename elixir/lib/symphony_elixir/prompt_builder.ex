@@ -14,11 +14,14 @@ defmodule SymphonyElixir.PromptBuilder do
       |> prompt_template!()
       |> parse_template!()
 
+    issue_map = issue |> Map.from_struct() |> to_solid_map()
+
     template
     |> Solid.render!(
       %{
         "attempt" => Keyword.get(opts, :attempt),
-        "issue" => issue |> Map.from_struct() |> to_solid_map()
+        "issue" => issue_map,
+        "story" => issue_map
       },
       @render_opts
     )

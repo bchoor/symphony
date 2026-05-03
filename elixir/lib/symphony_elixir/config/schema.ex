@@ -48,6 +48,9 @@ defmodule SymphonyElixir.Config.Schema do
       field(:kind, :string)
       field(:endpoint, :string, default: "https://api.linear.app/graphql")
       field(:api_key, :string)
+      field(:client_id, :string)
+      field(:client_secret, :string)
+      field(:token_endpoint, :string)
       field(:project_slug, :string)
       field(:assignee, :string)
       field(:active_states, {:array, :string}, default: ["Todo", "In Progress"])
@@ -59,7 +62,18 @@ defmodule SymphonyElixir.Config.Schema do
       schema
       |> cast(
         attrs,
-        [:kind, :endpoint, :api_key, :project_slug, :assignee, :active_states, :terminal_states],
+        [
+          :kind,
+          :endpoint,
+          :api_key,
+          :client_id,
+          :client_secret,
+          :token_endpoint,
+          :project_slug,
+          :assignee,
+          :active_states,
+          :terminal_states
+        ],
         empty_values: []
       )
     end
@@ -368,7 +382,17 @@ defmodule SymphonyElixir.Config.Schema do
   defp finalize_settings(settings) do
     tracker = %{
       settings.tracker
-      | api_key: resolve_secret_setting(settings.tracker.api_key, System.get_env("LINEAR_API_KEY")),
+      | api_key: resolve_secret_setting(settings.tracker.api_key, tracker_api_key_fallback(settings.tracker.kind)),
+        client_id:
+          resolve_secret_setting(
+            settings.tracker.client_id,
+            System.get_env("P2E_OAUTH_SYMPHONY_CLIENT_ID")
+          ),
+        client_secret:
+          resolve_secret_setting(
+            settings.tracker.client_secret,
+            System.get_env("P2E_OAUTH_SYMPHONY_CLIENT_SECRET")
+          ),
         assignee: resolve_secret_setting(settings.tracker.assignee, System.get_env("LINEAR_ASSIGNEE"))
     }
 
@@ -385,6 +409,12 @@ defmodule SymphonyElixir.Config.Schema do
 
     %{settings | tracker: tracker, workspace: workspace, codex: codex}
   end
+
+  defp tracker_api_key_fallback("p2e") do
+    System.get_env("P2E_API_TOKEN") || System.get_env("P2E_TOKEN")
+  end
+
+  defp tracker_api_key_fallback(_kind), do: System.get_env("LINEAR_API_KEY")
 
   defp normalize_keys(value) when is_map(value) do
     Enum.reduce(value, %{}, fn {key, raw_value}, normalized ->
